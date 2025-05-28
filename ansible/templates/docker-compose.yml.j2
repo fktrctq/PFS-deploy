@@ -1,0 +1,91 @@
+services:
+  "{{ pg_service_name }}":
+    image: "{{ db_image }}"
+    container_name: "{{ pg_container_name }}"
+    environment:
+      POSTGRES_DB: "{{ db_name }}"
+      POSTGRES_USER: "{{ db_user }}"
+      POSTGRES_PASSWORD: "{{ db_password }}"
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale={{ db_locale }} --no-sync"
+      POSTGRES_HOST_AUTH_METHOD: "{{ db_auth_method }}"
+    expose:
+      - 5432
+    volumes:
+      - "{{ vol_name }}:/var/lib/postgresql/data"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d {{ db_name }} -U {{ db_user }}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "{{ log_max_size | default('10m') }}"
+        max-file: "{{ log_max_file | default('3') }}"
+
+  "{{ app_service_name }}":
+    build:
+      context: ./django
+      dockerfile: Dockerfile
+    image: "{{ app_container_name }}:latest"
+    container_name: "{{ app_container_name }}"
+    environment:
+      DJANGO_SUPERUSER_USERNAME: "{{ django_superuser_username }}"
+      DJANGO_SUPERUSER_EMAIL: "{{ django_superuser_email }}"
+      DJANGO_SUPERUSER_PASSWORD: "{{ django_superuser_password }}"
+      DJANGO_SECRET_KEY: "{{ django_secret_key }}"
+      DJANGO_DEBUG: "{{ django_debug }}"
+      DJANGO_LOGLEVEL: "{{ django_loglevel }}"
+      DJANGO_ALLOWED_HOSTS: "{{ django_allowed_hosts }}"
+      DJANGO_LANGUAGE_CODE: "{{ django_language_code }}"
+      DJANGO_TZ: "{{ django_tz }}"
+      DATABASE_ENGINE: "{{ db_engine }}"
+      DATABASE_NAME: "{{ db_name }}"
+      DATABASE_USERNAME: "{{ db_user }}"
+      DATABASE_PASSWORD: "{{ db_password }}"
+      DATABASE_HOST: "{{ db_host }}"
+      DATABASE_PORT: "{{ db_port }}"
+    expose:
+      - 8000
+    depends_on:
+      "{{ pg_service_name }}":
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             python manage.py shell < createsu.py &&
+             gunicorn --bind 0.0.0.0:8000 --workers 3 backend.wsgi:application"
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "{{ log_max_size | default('10m') }}"
+        max-file: "{{ log_max_file | default('5') }}"
+
+  "{{ web_service_name }}":
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: "{{ web_container_name }}:latest"  
+    container_name: "{{ web_container_name }}"
+    ports:
+      - "{{ nginx_public_port }}:80"
+    command: ["nginx", "-g", "daemon off;"]
+    depends_on:
+      "{{ app_service_name }}":
+        condition: service_healthy
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "{{ log_max_size | default('10m') }}"
+        max-file: "{{ log_max_file | default('3') }}"
+
+volumes:
+  "{{ vol_name }}":

@@ -1,0 +1,172 @@
+
+  # ================ Деплой проета ================ #
+  # =============== Этап подготовки =============== #
+   # Блоков копирования можно заменить блок,
+   # синхронизации проекта, но для этого должен быть установлен 
+   # rsync на управляющем и целевом сервере
+   
+   # - name: Синхронизировать проект с хоста на сервер
+   #   synchronize:
+   #     src: "../docker/"
+   #     dest: "{{ project_path }}"
+   #     delete: yes  # Удалит файлы на целевой стороне, которых нет в src
+   #     recursive: yes
+   #   delegate_to: localhost
+
+   # Удаляем старый проект, чтобы не было конфликтов
+    - name: Удалить каталог проекта, если он есть
+      file:
+        path: "{{ project_path }}"
+        state: absent
+
+    # Создаём чистую директорию для нового проекта
+    - name: Создать директорию для проекта
+      file:
+        path: "{{ project_path }}"
+        state: directory
+    
+    # Попытка клонировать проект из репозитория, если задан project_repo_url
+    - name: Клонировать проект из GitHub
+      git:
+        repo: "{{ project_repo_url }}"
+        dest: "{{ project_path }}"
+        version: "{{ project_repo_branch | default('main') }}"
+      when: project_repo_url is defined
+
+    # Копируем файлы проекта с управляющего на целевой сервер если не удалось скачать из репозитория
+    - name: Скопировать проект локально 
+      copy:
+        src: ../docker/
+        dest: "{{ project_path }}"
+      when: project_repo_url is not defined
+      
+  # =============== Генерация файлов на основе шаблонов и переменных =============== #
+
+    # Генерируем docker-compose.yml из шаблона docker-compose.yml.j2 и переменных
+    - name: Скопировать docker-compose.yml 
+      template:
+        src: docker-compose.yml.j2
+        dest: "{{ project_path }}/docker-compose.yml" 
+
+    # Генерируем конфигурацию nginx из шаблона nginx.conf.j2 и переменных
+    - name: Скопировать nginx.conf 
+      template:
+        src: nginx.conf.j2
+        dest: "{{ project_path }}/nginx/nginx.conf"
+      
+  # =============== Останавливаем и удаляем старые контейнеры, результат записываем в лог =============== #
+
+    # Остановка и удаление старых контейнеров
+    - name: Остановка и удаление старых контейнеров
+      shell: docker-compose down > down.log 2>&1
+      args:
+        chdir: "{{ project_path }}"
+      register: down_result
+      ignore_errors: true
+    
+    # Если остановка контейнеров завершилась ошибкой — выводим лог
+    - name: Чтение содержимого лога остановки и удаление старых контейнеров при возникновении ошибки
+      slurp:
+        src: "{{ project_path }}/down.log"
+      register: down_log_content
+      when: 
+        - down_result is defined
+        - down_result.rc != 0
+
+    - name: Вывод лога остановки и удаление старых контейнеров
+      debug:
+        msg: "{{ down_log_content.content | b64decode | regex_replace('\u001b\\[[0-9;]*[a-zA-Z]', '') | replace('\\n', '\n')| split('\n') }}"
+      when: 
+        - down_log_content is defined
+        - down_log_content.content is defined
+        - down_result.rc != 0
+      failed_when: false  # Не считать задачу ошибкой вне зависимости от результата
+  
+  # =============== Запускаем контейнеры в фоне, результат записываем в лог =============== #
+
+    # Запускаем контейнеры в фоне
+    - name: Запуск docker-compose
+      shell: docker-compose up -d
+      register: deploy_check
+      args:
+        chdir: "{{ project_path }}"
+     
+    # Получаем последние 50 строк лога запуска контейнеров
+    - name: Загружаю последние 50 строк логов контейнеров и сохраняю в up.log
+      shell: docker-compose logs --tail=50 > up.log
+      args:
+        chdir: "{{ project_path }}"
+      register: up_logs_result
+    
+    # Читаем и выводим последние логи запуска контейнеров в консоль
+    - name: Чтение содержимого лога запуска контейнеров
+      slurp:
+        src: "{{ project_path }}/up.log"
+      register: up_log_content
+      when: up_logs_result is defined
+
+    - name: Вывод лога запуска контейнеров
+      debug:
+        msg: "{{ up_log_content.content | b64decode | regex_replace('\u001b\\[[0-9;]*[a-zA-Z]', '') | replace('\\n', '\n')| split('\n') }}"
+      when: 
+        - up_log_content is defined
+        - up_log_content.content is defined
+      failed_when: false  # Не считать задачу ошибкой вне зависимости от результата
+
+  # =============== Очищаем неиспользуемые docker образы при успешном деплое, результат записываем в лог =============== #
+
+    # Очищаем неиспользуемые docker образы при успешном деплое
+    - name: Удалить dangling (неиспользуемые) docker образы при успешном деплое
+      shell: docker image prune -f > prune.log 2>&1
+      args:
+        chdir: "{{ project_path }}"
+      register: prune_result
+      when: deploy_check.rc == 0
+      ignore_errors: yes
+    
+     # Если очистка образов прошла с ошибкой, читаем выводим лог
+    - name: Чтение содержимого лога очистки контейнеров
+      slurp:
+        src: "{{ project_path }}/prune.log"
+      register: prune_log_content
+      when: 
+        - prune_result is defined
+        - prune_result.rc != 0
+
+    - name: Вывод лога очистки контейнеров
+      debug:
+        msg: "{{ prune_log_content.content | b64decode | regex_replace('\u001b\\[[0-9;]*[a-zA-Z]', '') | replace('\\n', '\n')| split('\n') }}"
+      when: 
+        - prune_log_content is defined
+        - prune_log_content.content is defined
+        - prune_result.rc != 0
+      failed_when: false  # Не считать задачу ошибкой вне зависимости от результата
+     
+  # =============== Загрузка логов, копируем на управляющий сервер =============== #
+
+    - name: Установить переменную log_local_dir для логов файлов
+      set_fact:
+        log_local_dir: "./deploy_logs/{{ inventory_hostname }}"
+
+    # Создаём директорию на управляющем сервере для логов
+    - name: Создать локальную директорию для логов
+      file:
+        path: "{{ log_local_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      ignore_errors: true
+
+    # Скачиваем логи с удалённого сервера на управляющий
+    - name: Скопировать все логи с удалённого сервера
+      fetch:
+        src: "{{ project_path }}/{{ item }}"
+        dest: "{{ log_local_dir }}/{{ item }}"
+        flat: yes
+        fail_on_missing: no
+      loop:
+        - down.log
+        - up.log
+        - prune.log
+      ignore_errors: true
+    

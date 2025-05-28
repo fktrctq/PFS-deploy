@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SBER</title>
+    {% load static %}
+</head>
+<body>
+    <a href="https://sber.ru" target="_blank">
+        <img src="{% static 'images/photo.png' %}" alt="My Photo" style="max-width: 100%; height: auto;">
+    </a>
+</body>
+</html>

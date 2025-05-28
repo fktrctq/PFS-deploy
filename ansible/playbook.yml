@@ -1,0 +1,14 @@
+- name: Установка Docker и Docker Compose
+  hosts: dev
+  become: yes
+  roles:
+    - docker_install
+
+- name: Деплой проекта
+  hosts: dev
+  become: yes
+  roles:
+    - role: deploy_project
+      when: docker_installed | default(false)
+
+     

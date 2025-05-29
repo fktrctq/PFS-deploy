@@ -41,6 +41,6 @@
       debug:
         msg: "Ошибка при установке Docker или Docker Compose. Проверьте подключение и права пользователя."
         
-    - name:
+    - name: Ошибка установки Docker и Docker-compose
       set_fact:
         docker_installed: false  

@@ -1,4 +1,3 @@
----
 - name: Проверить установлен ли Docker
   command: docker --version
   register: docker_check
@@ -13,17 +12,40 @@
   set_fact:
     docker_installed: "{{ docker_check.rc == 0 }}"
 
-- name: Получить текущую версию Docker
-  set_fact:
-    current_docker_version: "{{ (docker_check.stdout | regex_search('Docker version ([0-9.]+)', '\\1')) if docker_installed else '' }}"
-
 - name: Установить факт, что Docker Compose установлен
   set_fact:
     compose_installed: "{{ compose_check.rc == 0 }}"
 
-- name: Получить текущую версию Docker Compose
+- name: Получить текущую версию Docker (сырое значение)
   set_fact:
-    current_compose_version: "{{ (compose_check.stdout | regex_search('docker-compose version ([0-9.]+)', '\\1')) if compose_installed else '' }}"
+    current_docker_version_raw: "{{ docker_check.stdout | regex_search('Docker version ([0-9.]+)', '\\1') if docker_installed else '' }}"
+
+- name: Получить текущую версию Docker Compose (сырое значение)
+  set_fact:
+    current_compose_version_raw: "{{ compose_check.stdout | regex_search('docker-compose version ([0-9.]+)', '\\1') if compose_installed else '' }}"
+
+- name: Привести current_docker_version к строке (если список — берем первый элемент)
+  set_fact:
+    current_docker_version: >-
+      {{ (current_docker_version_raw[0] if current_docker_version_raw is iterable and current_docker_version_raw | length > 0 else current_docker_version_raw) | string }}
+
+- name: Привести current_compose_version к строке (если список — берем первый элемент)
+  set_fact:
+    current_compose_version: >-
+      {{ (current_compose_version_raw[0] if current_compose_version_raw is iterable and current_compose_version_raw | length > 0 else current_compose_version_raw) | string }}
+
+- name: Привести требуемые версии к строке (на всякий случай)
+  set_fact:
+    required_docker_version: "{{ required_docker_version | string }}"
+    required_compose_version: "{{ required_compose_version | string }}"
+
+- name: Отладка текущих и требуемых версий
+  debug:
+    msg:
+      - "current_docker_version={{ current_docker_version }} (type={{ current_docker_version | type_debug }})"
+      - "required_docker_version={{ required_docker_version }} (type={{ required_docker_version | type_debug }})"
+      - "current_compose_version={{ current_compose_version }} (type={{ current_compose_version | type_debug }})"
+      - "required_compose_version={{ required_compose_version }} (type={{ required_compose_version | type_debug }})"
 
 - name: Проверить необходимость обновления Docker
   set_fact:

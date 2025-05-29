@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-
->>>>>>> dbe0e9253966f92c23c516e6e8a44f72772d3cbe
 - name: Проверить установлен ли Docker
   command: docker --version
   register: docker_check

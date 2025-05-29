@@ -1,7 +1,6 @@
 - name: Установка или обновление Docker и Docker Compose
   block:
 
-<<<<<<< HEAD
     - name: Удалить старые Docker репозитории
       file:
         path: /etc/apt/sources.list.d/docker.list
@@ -49,34 +48,6 @@
         update_cache: yes
 
 
-=======
-    - name: Установить зависимости для Docker и репозиториев
-      apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - gnupg
-          - lsb-release
-        state: present
-        update_cache: yes
-
-    - name: Добавить официальный GPG ключ Docker
-      apt_key:
-        url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
-        state: present
-
-    - name: Добавить Docker репозиторий
-      apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
-        state: present
-        filename: docker
-
-    - name: Обновить кэш apt
-      apt:
-        update_cache: yes
-
->>>>>>> dbe0e9253966f92c23c516e6e8a44f72772d3cbe
     - name: Установить или обновить Docker
       apt:
         name: docker-ce

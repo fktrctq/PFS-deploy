@@ -1,4 +1,4 @@
----
+
 - name: Проверить установлен ли Docker
   command: docker --version
   register: docker_check

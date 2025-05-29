@@ -1,38 +1,53 @@
----
-- name: Установить зависимости для Docker и репозиториев
-  apt:
-    name:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - gnupg
-      - lsb-release
-    state: present
-    update_cache: yes
+- name: Установка или обновление Docker и Docker Compose
+  block:
 
-- name: Добавить официальный GPG ключ Docker
-  apt_key:
-    url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
-    state: present
+    - name: Установить зависимости для Docker и репозиториев
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: yes
 
-- name: Добавить Docker репозиторий
-  apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
-    state: present
-    filename: docker
+    - name: Добавить официальный GPG ключ Docker
+      apt_key:
+        url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+        state: present
 
-- name: Обновить кэш apt
-  apt:
-    update_cache: yes
+    - name: Добавить Docker репозиторий
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
 
-- name: Установить или обновить Docker
-  apt:
-    name: docker-ce
-    state: latest
-  when: docker_update_required
+    - name: Обновить кэш apt
+      apt:
+        update_cache: yes
 
-- name: Установить или обновить Docker Compose
-  apt:
-    name: docker-compose-plugin
-    state: latest
-  when: compose_update_required
+    - name: Установить или обновить Docker
+      apt:
+        name: docker-ce
+        state: latest
+      when: docker_update_required | default(true)
+
+    - name: Установить или обновить Docker Compose
+      apt:
+        name: docker-compose-plugin
+        state: latest
+      when: compose_update_required | default(true)
+
+    - name: Docker и Docker Compose успешно установлены
+      set_fact:
+        docker_installed: true
+
+  rescue:
+    - name: Ошибка установки Docker/Docker Compose или зависимостей
+      debug:
+        msg: "Ошибка при установке Docker или Docker Compose. Проверьте подключение и права пользователя."
+
+    - name: Установить флаг docker_installed в false
+      set_fact:
+        docker_installed: false

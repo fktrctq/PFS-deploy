@@ -1,6 +1,6 @@
 # Project directory before deploy
 project_path: /opt/devforsber
-project_repo_url: ""
+project_repo_url: "https://github.com/fktrctq/PFS-web.git"
 project_repo_branch: dev
 
 # Docker Compose

@@ -1,7 +1,9 @@
 # Project directory before deploy
 project_path: /opt/forsber
-project_repo_url: ""
+project_repo_url: "https://github.com/fktrctq/PFS-web.git"
 project_repo_branch: main
+required_docker_version: "24.0.7"
+required_compose_version: "2.24.6"
 
 # Docker Compose
 db_image: postgres:alpine3.21
@@ -22,7 +24,7 @@ web_service_name: web
 # Nginx settings
 server_name: localhost
 proxy_upstream: "{{ app_service_name }}:8000"
-nginx_public_port: "8000"
+nginx_public_port: "80"
 
 # Database settings
 db_engine: "postgresql"

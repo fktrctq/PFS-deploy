@@ -1,46 +1,6 @@
-- name: Проверка установки Docker и Docker-compose
-  block:
+- name: Проверка версий Docker и Docker Compose
+  import_tasks: check_versions.yml
 
-    - name: Установить зависимости
-      apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - software-properties-common
-        update_cache: yes
-    
-    - name: Проверить наличие docker
-      command: docker --version
-      register: docker_check
-      ignore_errors: yes
-
-    - name: Установить или обновить Docker
-      apt:
-        name: docker.io
-        state: latest  # Обновит, если уже установлен
-      when: docker_check.rc != 0  # Устанавливаем, если НЕ установлен
-
-    - name: Проверить наличие Docker-compose
-      command: docker-compose --version
-      register: docker_compose_check
-      ignore_errors: yes
-
-    - name: Установить или обновить Docker-compose
-      apt:
-        name: docker-compose
-        state: latest
-      when: docker_compose_check.rc != 0  # Устанавливаем, если НЕ установлен
-
-    - name: Docker и Docker-compose успешно установлены
-      set_fact:
-        docker_installed: true
-
-  rescue:
-    - name: Ошибка установки Docker/Docker-compose или зависимостей
-      debug:
-        msg: "Ошибка при установке Docker или Docker Compose. Проверьте подключение и права пользователя."
-        
-    - name:
-      set_fact:
-        docker_installed: false  
+- name: Установка или обновление Docker и Docker Compose, если нужно
+  import_tasks: install_docker.yml
+  when: docker_update_required or compose_update_required

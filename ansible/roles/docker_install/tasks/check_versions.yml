@@ -1,0 +1,38 @@
+---
+- name: Проверить установлен ли Docker
+  command: docker --version
+  register: docker_check
+  ignore_errors: true
+
+- name: Проверить установлен ли Docker Compose
+  command: docker-compose --version
+  register: compose_check
+  ignore_errors: true
+
+- name: Установить факт, что Docker установлен
+  set_fact:
+    docker_installed: "{{ docker_check.rc == 0 }}"
+
+- name: Получить текущую версию Docker
+  set_fact:
+    current_docker_version: "{{ (docker_check.stdout | regex_search('Docker version ([0-9.]+)', '\\1')) if docker_installed else '' }}"
+
+- name: Установить факт, что Docker Compose установлен
+  set_fact:
+    compose_installed: "{{ compose_check.rc == 0 }}"
+
+- name: Получить текущую версию Docker Compose
+  set_fact:
+    current_compose_version: "{{ (compose_check.stdout | regex_search('docker-compose version ([0-9.]+)', '\\1')) if compose_installed else '' }}"
+
+- name: Проверить необходимость обновления Docker
+  set_fact:
+    docker_update_required: >-
+      {{ (not docker_installed) or
+         (current_docker_version is version(required_docker_version, '<')) }}
+
+- name: Проверить необходимость обновления Docker Compose
+  set_fact:
+    compose_update_required: >-
+      {{ (not compose_installed) or
+         (current_compose_version is version(required_compose_version, '<')) }}

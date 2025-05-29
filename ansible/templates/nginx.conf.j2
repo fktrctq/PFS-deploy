@@ -13,7 +13,7 @@ http {
     access_log /var/log/nginx/access.log;
 
     server {
-        listen 80;
+        listen {{ nginx_public_port }};
         server_name {{ server_name }};
 
         location / {

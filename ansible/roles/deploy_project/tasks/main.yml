@@ -71,7 +71,7 @@
 
     # Остановка и удаление старых контейнеров
     - name: Остановка и удаление старых контейнеров
-      shell: docker-compose down > down.log 2>&1
+      shell: docker compose down > down.log 2>&1
       args:
         chdir: "{{ project_path }}"
       register: down_result
@@ -98,15 +98,15 @@
   # =============== БЛОК 4: Запускаем контейнеры в фоне, результат записываем в лог =============== #
 
     # Запускаем контейнеры в фоне
-    - name: Запуск docker-compose
-      shell: docker-compose up -d
+    - name: Запуск docker compose
+      shell: docker compose up -d
       register: deploy_check
       args:
         chdir: "{{ project_path }}"
      
     # Получаем последние 50 строк лога запуска контейнеров
     - name: Загружаю последние 50 строк логов контейнеров и сохраняю в up.log
-      shell: docker-compose logs --tail=50 > up.log
+      shell: docker compose logs --tail=50 > up.log
       args:
         chdir: "{{ project_path }}"
       register: up_logs_result

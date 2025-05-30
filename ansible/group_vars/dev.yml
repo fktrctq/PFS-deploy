@@ -24,7 +24,7 @@ web_service_name: dev-web
 # Nginx settings
 server_name: localhost
 proxy_upstream: "{{ app_service_name }}:8000"
-nginx_public_port: "80"
+nginx_public_port: "8080"
 
 # Database settings
 db_engine: "postgresql"

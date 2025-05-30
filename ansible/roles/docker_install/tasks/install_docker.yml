@@ -66,6 +66,12 @@
         state: latest
       when: compose_update_required | default(false)
 
+    - name: Запустить и включить службу Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
     # ─────────────── БЛОК 4: Завершение ───────────────
 
     - name: Docker и Docker Compose успешно установлены
@@ -81,7 +87,7 @@
       debug:
         msg: "Ошибка при установке Docker или Docker Compose. Проверьте подключение и права пользователя."
 
-    - name: Установить флаг docker_installed и compose_installed в false
+    - name: Задача прервана из-за ошибки установки docker и dockeer compose (v2)
       set_fact:
         docker_installed: false
         compose_installed: false

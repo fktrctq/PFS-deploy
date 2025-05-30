@@ -22,7 +22,7 @@ app_service_name: prod-app-fs
 web_service_name: prod-web
 
 # Nginx settings
-server_name: localhost
+server_name: prod.ruviewer.ru
 proxy_upstream: "{{ app_service_name }}:8000"
 nginx_public_port: "80"
 

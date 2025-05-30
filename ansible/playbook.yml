@@ -1,6 +1,6 @@
-- name: Проверка и установка Docker и Docker Compose
+- name: Деплой проекта PFS (Django + pgSQL + Nginx)
   hosts: dev
-  become: yes
+  become: true
 
   tasks:
     # ======= Шаг 1: Проверка версий и необходимости обновления Docker и Compose ======= #

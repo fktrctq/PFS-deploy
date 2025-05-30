@@ -1,6 +1,0 @@
-- name: Проверка версий Docker и Docker Compose
-  import_tasks: check_versions.yml
-
-- name: Установка или обновление Docker и Docker Compose, если нужно
-  import_tasks: install_docker.yml
-  when: docker_update_required or compose_update_required

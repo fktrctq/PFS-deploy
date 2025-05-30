@@ -1,60 +1,91 @@
-- name: Проверить установлен ли Docker
+# 
+# ============== БЛОК 1: Проверка заданных версий Docker и Compose ============== #
+
+# Инициализация всех переменных по умолчанию (в "безопасные" значения)
+- name: Инициализировать переменные по умолчанию
+  set_fact:
+    docker_update_required: false
+    compose_update_required: false
+    docker_installed: true
+    compose_installed: true
+
+# Прервать выполнение, если не заданы обе версии. Предполагается что если версии не указаны то Docker и Compose установлены
+# Для этого перменные docker_installed и compose_installed установлены в true, для деплоя проекта
+- name: Прервать выполнение, если не заданы обе версии Docker и Compose
+  fail:
+    msg: >
+      Переменные required_docker_version и required_compose_version не заданы.
+      Установка Docker и Docker Compose не требуется.
+  when: required_docker_version | default('') == '' and required_compose_version | default('') == ''
+
+# ============== БЛОК 2: Получение версий  Docker и Compose ============== #
+- name: Проверить установленную версию Docker
   command: docker --version
   register: docker_check
   ignore_errors: true
+  changed_when: false
 
-- name: Проверить установлен ли Docker Compose
+- name: Проверить установленную Docker Compose
   command: docker-compose --version
   register: compose_check
   ignore_errors: true
+  changed_when: false
 
-- name: Установить факт, что Docker установлен
-  set_fact:
-    docker_installed: "{{ docker_check.rc == 0 }}"
+- name: Проверить установленную docker compose (v2)
+  command: docker compose version
+  register: compose_v2_check
+  ignore_errors: true
+  changed_when: false
 
-- name: Установить факт, что Docker Compose установлен
-  set_fact:
-    compose_installed: "{{ compose_check.rc == 0 }}"
-
-- name: Получить текущую версию Docker (сырое значение)
-  set_fact:
-    current_docker_version_raw: "{{ docker_check.stdout | regex_search('Docker version ([0-9.]+)', '\\1') if docker_installed else '' }}"
-
-- name: Получить текущую версию Docker Compose (сырое значение)
-  set_fact:
-    current_compose_version_raw: "{{ compose_check.stdout | regex_search('docker-compose version ([0-9.]+)', '\\1') if compose_installed else '' }}"
-
-- name: Привести current_docker_version к строке (если список — берем первый элемент)
+- name: Определение версии docker
   set_fact:
     current_docker_version: >-
-      {{ (current_docker_version_raw[0] if current_docker_version_raw is iterable and current_docker_version_raw | length > 0 else current_docker_version_raw) | string }}
+      {{ docker_check.stdout | regex_findall('[0-9]+\.[0-9]+\.[0-9]+') | first | default('0.0.0') }}
 
-- name: Привести current_compose_version к строке (если список — берем первый элемент)
+- name: Определение версии docker-compose (v1)
+  set_fact:
+    current_compose_v1_version: >-
+      {{ compose_check.stdout | regex_findall('[0-9]+\.[0-9]+\.[0-9]+') | first | default('0.0.0') }}
+
+- name: Определение версии docker compose (v2)
+  set_fact:
+    current_compose_v2_version: >-
+      {{ compose_v2_check.stdout | regex_findall('[0-9]+\.[0-9]+\.[0-9]+') | first | default('0.0.0') }}
+
+# Выбрать версию compose: если найдена V2 — используем её, иначе — V1
+- name: Приоритетный выбор docker compose v2 при наличии
   set_fact:
     current_compose_version: >-
-      {{ (current_compose_version_raw[0] if current_compose_version_raw is iterable and current_compose_version_raw | length > 0 else current_compose_version_raw) | string }}
-
-- name: Привести требуемые версии к строке (на всякий случай)
-  set_fact:
-    required_docker_version: "{{ required_docker_version | string }}"
-    required_compose_version: "{{ required_compose_version | string }}"
-
-- name: Отладка текущих и требуемых версий
-  debug:
-    msg:
-      - "current_docker_version={{ current_docker_version }} (type={{ current_docker_version | type_debug }})"
-      - "required_docker_version={{ required_docker_version }} (type={{ required_docker_version | type_debug }})"
-      - "current_compose_version={{ current_compose_version }} (type={{ current_compose_version | type_debug }})"
-      - "required_compose_version={{ required_compose_version }} (type={{ required_compose_version | type_debug }})"
+      {{ current_compose_v2_version if current_compose_v2_version != '0.0.0' else current_compose_v1_version | default('0.0.0') }}
+     
+# ============== БЛОК 3: Проверка необходимости обновления ============== #
 
 - name: Проверить необходимость обновления Docker
   set_fact:
-    docker_update_required: >-
-      {{ (not docker_installed) or
-         (current_docker_version is version(required_docker_version, '<')) }}
+    docker_update_required: "{{ (current_docker_version | string) is version((required_docker_version | string), '<') }}"
+  when:
+    - required_docker_version !=''
+    - current_docker_version != "0.0.0"
 
 - name: Проверить необходимость обновления Docker Compose
   set_fact:
-    compose_update_required: >-
-      {{ (not compose_installed) or
-         (current_compose_version is version(required_compose_version, '<')) }}
+    compose_update_required: "{{ (current_compose_version | string) is version((required_compose_version | string), '<') }}"
+  when:
+    - required_compose_version !=''
+    - current_compose_version != "0.0.0"
+
+# ============== БЛОК 4: Резельтаты проверки наличия/требования программного обеспечения ============== #
+
+- name: Установленные и требуемые версий программного обеспечения
+  debug:
+    msg:
+      - "Текущая версия Docker = {{ current_docker_version | default('N/A') }}"
+      - "Необходима версия Docker = {{ required_docker_version | default('N/A') }}"
+      - "Необходимость обновления Docker = {{ docker_update_required | default('N/A') }}"
+      - "Текущая версия Docker compose = {{ current_compose_version | default('N/A') }}"
+      - "Необходима версия Docker compose = {{ required_compose_version | default('N/A') }}"
+      - "Необходимость обновления Docker compose = {{ compose_update_required | default('N/A') }}"
+
+
+
+

@@ -1,5 +1,8 @@
+
 - name: Установка или обновление Docker и Docker Compose
   block:
+
+    # ─────────────── БЛОК 1: Очистка старых репозиториев ───────────────
 
     - name: Удалить старые Docker репозитории
       file:
@@ -7,12 +10,14 @@
         state: absent
       ignore_errors: true
 
-    - name: Удалить старые Docker репозитории из main sources.list
+    - name: Удалить записи Docker из основного sources.list
       lineinfile:
         path: /etc/apt/sources.list
         regexp: '^deb .*docker.com.*'
         state: absent
       ignore_errors: true
+
+    # ─────────────── БЛОК 2: Добавление репозитория Docker ───────────────
 
     - name: Установить зависимости для Docker и репозиториев
       apt:
@@ -47,28 +52,36 @@
       apt:
         update_cache: yes
 
+    # ─────────────── БЛОК 3: Установка пакетов ───────────────
 
     - name: Установить или обновить Docker
       apt:
         name: docker-ce
         state: latest
-      when: docker_update_required | default(true)
+      when: docker_update_required | default(false)
 
     - name: Установить или обновить Docker Compose
       apt:
         name: docker-compose-plugin
         state: latest
-      when: compose_update_required | default(true)
+      when: compose_update_required | default(false)
+
+    # ─────────────── БЛОК 4: Завершение ───────────────
 
     - name: Docker и Docker Compose успешно установлены
       set_fact:
         docker_installed: true
+        compose_installed: true
 
   rescue:
+
+    # ─────────────── БЛОК 5: Обработка ошибок ───────────────
+
     - name: Ошибка установки Docker/Docker Compose или зависимостей
       debug:
         msg: "Ошибка при установке Docker или Docker Compose. Проверьте подключение и права пользователя."
 
-    - name: Установить флаг docker_installed в false
+    - name: Установить флаг docker_installed и compose_installed в false
       set_fact:
         docker_installed: false
+        compose_installed: false

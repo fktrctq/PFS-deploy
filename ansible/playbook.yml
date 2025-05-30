@@ -1,14 +1,19 @@
-- name: Установка Docker и Docker Compose
+- name: Проверка и установка Docker и Docker Compose
   hosts: dev
   become: yes
-  roles:
-    - docker_install
 
-- name: Деплой проекта
-  hosts: dev
-  become: yes
-  roles:
-    - role: deploy_project
-      when: docker_installed | default(false)
+  tasks:
+    # ======= Шаг 1: Проверка версий и необходимости обновления Docker и Compose ======= #
+    - name: Проверка версий Docker и Docker Compose
+      import_tasks: roles/docker_install/tasks/check_versions.yml
 
-     
+    # ======= Шаг 2: Установка или обновление Docker и Compose ======= #
+    - name: Установка или обновление Docker и Docker Compose, если необходимо
+      import_tasks: roles/docker_install/tasks/install_docker.yml
+      when: docker_update_required or compose_update_required
+
+    # ======= Шаг 3: Деплой проекта ======= #
+    - name: Деплой проекта
+      import_tasks: roles/deploy_project/tasks/main.yml
+      when: docker_installed and compose_installed
+ 

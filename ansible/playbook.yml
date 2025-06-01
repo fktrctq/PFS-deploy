@@ -1,19 +1,32 @@
-- name: Деплой проекта PFS (Django + pgSQL + Nginx)
-  hosts: dev
+- name: Деплой проекта PFS (Django + pgSQL + Nginx + SSL)
+  hosts: prod
   become: true
 
   tasks:
     # ======= Шаг 1: Проверка версий и необходимости обновления Docker и Compose ======= #
-    - name: Проверка версий Docker и Docker Compose
+    - name: Проверка установки Docker и Docker Compose
       import_tasks: roles/docker_install/tasks/check_versions.yml
 
-    # ======= Шаг 2: Установка или обновление Docker и Compose ======= #
+     # ======= Шаг 2: Установка или обновление Docker и Compose ======= #
     - name: Установка или обновление Docker и Docker Compose, если необходимо
       import_tasks: roles/docker_install/tasks/install_docker.yml
       when: docker_update_required or compose_update_required
+    
+    # ======= Шаг 3: Проверка срока действия сертификата ======= #
+    - name: Проверка срока действия SSL сертификата
+      import_tasks: roles/ssl_for_nginx/tasks/check_ssl_validity.yml
 
-    # ======= Шаг 3: Деплой проекта ======= #
+    # ====== Шаг 4: Создание самоподписанного сертификата ========= #
+    - name: Создание самоподписаного сертификата для сайта
+      import_tasks: roles/ssl_for_nginx/tasks/self_signed_ssl.yml
+      when: not valid_ssl
+
+    # ======= Шаг 5: Деплой проекта ======= #
     - name: Деплой проекта
       import_tasks: roles/deploy_project/tasks/main.yml
       when: docker_installed and compose_installed
- 
+
+     # ======= Шаг 6: Получаем сертификат для продуктивной среды ========= #
+    - name: Деплой сертификата Letsencrypt
+      import_tasks: roles/ssl_for_nginx/tasks/letsencrypt_ssl.yml
+      when: site_ssl or not valid_ssl

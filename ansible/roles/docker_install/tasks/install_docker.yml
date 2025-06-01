@@ -91,3 +91,6 @@
       set_fact:
         docker_installed: false
         compose_installed: false
+  
+  tags:
+    - install_docker

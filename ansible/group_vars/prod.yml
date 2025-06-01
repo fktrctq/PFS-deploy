@@ -25,6 +25,10 @@ web_service_name: prod-web
 server_name: prod.ruviewer.ru
 proxy_upstream: "{{ app_service_name }}:8000"
 nginx_public_port: "80"
+nginx_public_port_ssl: "443"
+email_admin: "sber@sber.ru"
+site_ssl: true
+letsencrypt_path: /etc/letsencrypt
 
 
 # Database settings

@@ -1,0 +1,33 @@
+  - name: Установка openssl
+    apt:
+      name: openssl
+      state: present
+      update_cache: true
+    when: ansible_facts['os_family'] == "Debian"
+
+  - name: Установка переменных для self-signed сертификата
+    set_fact:
+      nginx_ssl_certificate_key: "{{ letsencrypt_path }}/live/{{ server_name }}/privkey.pem"
+      nginx_ssl_certificate: "{{ letsencrypt_path }}/live/{{ server_name }}/fullchain.pem"
+
+  - name: Создать директорию хранения сертификатов
+    file:
+      path: "{{ letsencrypt_path }}/live/{{ server_name }}/"
+      state: directory
+      mode: '0755'
+
+  - name: Генерация закрытого ключа
+    command: >
+      openssl genrsa -out {{ nginx_ssl_certificate_key }} 2048
+    args:
+      creates: "{{ nginx_ssl_certificate_key }}"
+
+  - name: Генерация самоподписанного сертификата
+    command: >
+      openssl req -new -x509
+      -key {{ nginx_ssl_certificate_key }}
+      -out {{ nginx_ssl_certificate }}
+      -days 365
+      -subj "/CN={{ server_name }}/O={{ server_name }}"
+    args:
+      creates: "{{ nginx_ssl_certificate }}"

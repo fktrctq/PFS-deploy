@@ -6,15 +6,35 @@ events {
 }
 
 http {
-    include       mime.types;
+    include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
-    sendfile        on;
-    keepalive_timeout  65;
+
     access_log /var/log/nginx/access.log;
+    sendfile on;
+    keepalive_timeout 65;
 
     server {
-        listen {{ nginx_public_port }};
+        listen {{nginx_public_port}};
         server_name {{ server_name }};
+
+        location /.well-known/acme-challenge/ {
+            root /etc/letsencrypt;
+            try_files $uri =404;
+        }
+
+        location / {
+        return 301 https://$host$request_uri;
+        }
+    }
+
+    server {
+        listen {{nginx_public_port_ssl}} ssl;
+        server_name {{ server_name }};
+
+        ssl_certificate     /etc/letsencrypt/live/{{ server_name }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/{{ server_name }}/privkey.pem;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+        ssl_ciphers         HIGH:!aNULL:!MD5;
 
         location / {
             proxy_pass http://{{ proxy_upstream }};

@@ -1,82 +1,84 @@
-# 
-# ============== БЛОК 1: Проверка заданных версий Docker и Compose ============== #
+- name: Проверка  Docker и Compose
+  block:
+  # ============== БЛОК 1: Проверка заданных версий Docker и Compose ============== #
+    # Инициализация переменных по умолчанию (в "безопасные" значения)
+    - name: Инициализировать переменные по умолчанию
+      set_fact:
+        docker_update_required: false
+        compose_update_required: false
+        docker_installed: true
+        compose_installed: true
+      
+    # Прервать выполнение, если не заданы обе версии. 
+    # Для этого перменные docker_installed и compose_installed установлены в true, для деплоя проекта
+    - name: Прервать выполнение, если не заданы обе версии Docker и Compose
+      fail:
+        msg: >
+          Переменные required_docker_version и required_compose_version не заданы.
+          Установка Docker и Docker Compose не требуется.
+      when: required_docker_version | default('') == '' and required_compose_version | default('') == ''
 
-# Инициализация всех переменных по умолчанию (в "безопасные" значения)
-- name: Инициализировать переменные по умолчанию
-  set_fact:
-    docker_update_required: false
-    compose_update_required: false
-    docker_installed: true
-    compose_installed: true
-  
+    # ============== БЛОК 2: Проверка наличия docker и compose ============== #
 
-# Прервать выполнение, если не заданы обе версии. Предполагается что если версии не указаны то Docker и Compose установлены
-# Для этого перменные docker_installed и compose_installed установлены в true, для деплоя проекта
-- name: Прервать выполнение, если не заданы обе версии Docker и Compose
-  fail:
-    msg: >
-      Переменные required_docker_version и required_compose_version не заданы.
-      Установка Docker и Docker Compose не требуется.
-  when: required_docker_version | default('') == '' and required_compose_version | default('') == ''
+    - name: Инициализировать переменные по умолчанию
+      set_fact:
+        docker_update_required: true
+        compose_update_required: true
+        current_docker_version: "0.0.0"
+        current_compose_v2_version: "0.0.0"
 
-# ============== БЛОК 2: Проверка наличия docker и compose ============== #
+    - name: Проверка установлен ли Docker
+      command: sh -c "docker --version 2>/dev/null || true"
+      register: docker_path
+      changed_when: false
 
-- name: Инициализировать переменные по умолчанию
-  set_fact:
-    docker_update_required: true
-    compose_update_required: true
-    current_docker_version: "0.0.0"
-    current_compose_v2_version: "0.0.0"
+    - name: Проверить, установлен ли docker compose (v2)
+      command: sh -c "docker compose version 2>/dev/null || true"
+      register: docker_compose_v2_path
+      changed_when: false
 
-- name: Проверка установлен ли Docker
-  command: sh -c "docker --version 2>/dev/null || true"
-  register: docker_path
-  changed_when: false
+    - name: Определение версии docker
+      set_fact:
+        current_docker_version: >-
+          {{ docker_path.stdout | regex_findall('[0-9]+\.[0-9]+\.[0-9]+') | first | default('0.0.0') }}
+      when: docker_path.stdout != ''
 
-- name: Проверить, установлен ли docker compose (v2)
-  command: sh -c "docker compose version 2>/dev/null || true"
-  register: docker_compose_v2_path
-  changed_when: false
+    - name: Определение версии docker compose (v2)
+      set_fact:
+        current_compose_v2_version: >-
+          {{ docker_compose_v2_path.stdout | regex_findall('[0-9]+\.[0-9]+\.[0-9]+') | first | default('0.0.0') }}
+      when: docker_compose_v2_path.stdout != ''
+        
+    # ============== БЛОК 4: Проверка необходимости обновления ============== #
 
-- name: Определение версии docker
-  set_fact:
-    current_docker_version: >-
-      {{ docker_path.stdout | regex_findall('[0-9]+\.[0-9]+\.[0-9]+') | first | default('0.0.0') }}
-  when: docker_path.stdout != ''
+    - name: Проверить необходимость обновления Docker
+      set_fact:
+        docker_update_required: "{{ (current_docker_version | string) is version((required_docker_version | string), '<') }}"
+      when:
+        - required_docker_version !=''
+        - current_docker_version != "0.0.0"
 
-- name: Определение версии docker compose (v2)
-  set_fact:
-    current_compose_v2_version: >-
-      {{ docker_compose_v2_path.stdout | regex_findall('[0-9]+\.[0-9]+\.[0-9]+') | first | default('0.0.0') }}
-  when: docker_compose_v2_path.stdout != ''
-    
-# ============== БЛОК 4: Проверка необходимости обновления ============== #
+    - name: Проверить необходимость обновления Docker Compose
+      set_fact:
+        compose_update_required: "{{ (current_compose_v2_version | string) is version((required_compose_version | string), '<') }}"
+      when:
+        - required_compose_version !=''
+        - current_compose_v2_version != "0.0.0"
 
-- name: Проверить необходимость обновления Docker
-  set_fact:
-    docker_update_required: "{{ (current_docker_version | string) is version((required_docker_version | string), '<') }}"
-  when:
-    - required_docker_version !=''
-    - current_docker_version != "0.0.0"
+    # ============== БЛОК 5: Резельтаты проверки наличия/требования программного обеспечения ============== #
 
-- name: Проверить необходимость обновления Docker Compose
-  set_fact:
-    compose_update_required: "{{ (current_compose_v2_version | string) is version((required_compose_version | string), '<') }}"
-  when:
-    - required_compose_version !=''
-    - current_compose_v2_version != "0.0.0"
+    - name: Установленные и требуемые версий программного обеспечения
+      debug:
+        msg:
+          - "Текущая версия Docker = {{ current_docker_version | default('N/A') }}"
+          - "Необходима версия Docker = {{ required_docker_version | default('N/A') }}"
+          - "Необходимость обновления Docker = {{ docker_update_required | default('N/A') }}"
+          - "Текущая версия Docker compose = {{ current_compose_v2_version | default('N/A') }}"
+          - "Необходима версия Docker compose = {{ required_compose_version | default('N/A') }}"
+          - "Необходимость обновления Docker compose = {{ compose_update_required | default('N/A') }}"
 
-# ============== БЛОК 5: Резельтаты проверки наличия/требования программного обеспечения ============== #
-
-- name: Установленные и требуемые версий программного обеспечения
-  debug:
-    msg:
-      - "Текущая версия Docker = {{ current_docker_version | default('N/A') }}"
-      - "Необходима версия Docker = {{ required_docker_version | default('N/A') }}"
-      - "Необходимость обновления Docker = {{ docker_update_required | default('N/A') }}"
-      - "Текущая версия Docker compose = {{ current_compose_v2_version | default('N/A') }}"
-      - "Необходима версия Docker compose = {{ required_compose_version | default('N/A') }}"
-      - "Необходимость обновления Docker compose = {{ compose_update_required | default('N/A') }}"
+  tags:
+    - version_docker
 
 
 

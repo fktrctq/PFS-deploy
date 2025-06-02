@@ -22,11 +22,15 @@ app_service_name: dev-app-fs
 web_service_name: dev-web
 
 # Nginx settings
-server_name: localhost
+server_name: 172.16.0.11
 proxy_upstream: "{{ app_service_name }}:8000"
-nginx_public_port: "8080"
+nginx_public_port: "80"
 nginx_public_port_ssl: "443"
+
+# SSL  Let's Encrypt
+email_admin: "sber@sber.ru"
 site_ssl: false
+test_ssl_enabled: true 
 letsencrypt_path: /etc/letsencrypt
 
 # Database settings

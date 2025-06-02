@@ -99,7 +99,7 @@
 
     # Запускаем контейнеры в фоне
     - name: Запуск docker compose
-      shell: docker compose up -d
+      shell: docker compose up -d --build
       register: deploy_check
       args:
         chdir: "{{ project_path }}"

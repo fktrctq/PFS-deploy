@@ -1,5 +1,5 @@
 - name: Деплой проекта PFS (Django + pgSQL + Nginx + SSL)
-  hosts: prod
+  hosts: dev
   become: true
 
   tasks:
@@ -26,7 +26,13 @@
       import_tasks: roles/deploy_project/tasks/main.yml
       when: docker_installed and compose_installed
 
-     # ======= Шаг 6: Получаем сертификат для продуктивной среды ========= #
-    - name: Деплой сертификата Letsencrypt
+     # ======= Шаг 6: Открываем порты на firewall ========= #
+    - name: Открытие портов для работы проекта
+      import_tasks: roles/firewall/tasks/enabled_firewall.yml 
+
+     # ======= Шаг 7: Получаем сертификат для продуктивной среды ========= #
+    - name: Создание сертификата Let's Encrypt
       import_tasks: roles/ssl_for_nginx/tasks/letsencrypt_ssl.yml
-      when: site_ssl or not valid_ssl
+      when: site_ssl and not valid_ssl
+
+    

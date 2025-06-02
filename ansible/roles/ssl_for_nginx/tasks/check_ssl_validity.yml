@@ -32,9 +32,6 @@
     msg: >-
       valid_ssl = {{ valid_ssl }} (сертификат истекает {{
       (cert_info.not_after | to_datetime('%Y%m%d%H%M%SZ')).strftime('%Y-%m-%d %H:%M:%S')
-      }}, порог {{
-      (threshold_ts | int | timestamp_to_datetime).strftime('%Y-%m-%d %H:%M:%S')
       }})
   when: valid_ssl
   ignore_errors: true
-

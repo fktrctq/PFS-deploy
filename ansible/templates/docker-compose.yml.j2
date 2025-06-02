@@ -75,7 +75,10 @@ services:
     image: "{{ web_container_name }}:latest"  
     container_name: "{{ web_container_name }}"
     ports:
-      - "{{ nginx_public_port }}:80"
+      - "{{ nginx_public_port }}:{{ nginx_public_port }}"
+      - "{{ nginx_public_port_ssl }}:{{ nginx_public_port_ssl }}"
+    volumes:
+      - {{ letsencrypt_path }}:/etc/letsencrypt:ro
     command: ["nginx", "-g", "daemon off;"]
     depends_on:
       "{{ app_service_name }}":
@@ -86,6 +89,6 @@ services:
       options:
         max-size: "{{ log_max_size | default('10m') }}"
         max-file: "{{ log_max_file | default('3') }}"
-
+    
 volumes:
   "{{ vol_name }}":

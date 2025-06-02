@@ -2,6 +2,8 @@
 project_path: /opt/devforsber
 project_repo_url: "https://github.com/fktrctq/PFS-web.git"
 project_repo_branch: dev
+required_docker_version: "24.0.7"
+required_compose_version: "2.24.6"
 
 # Docker Compose
 db_image: postgres:alpine3.21
@@ -20,9 +22,16 @@ app_service_name: dev-app-fs
 web_service_name: dev-web
 
 # Nginx settings
-server_name: localhost
+server_name: 172.16.0.11
 proxy_upstream: "{{ app_service_name }}:8000"
-nginx_public_port: "8080"
+nginx_public_port: "80"
+nginx_public_port_ssl: "443"
+
+# SSL  Let's Encrypt
+email_admin: "sber@sber.ru"
+site_ssl: false
+test_ssl_enabled: true 
+letsencrypt_path: /etc/letsencrypt
 
 # Database settings
 db_engine: "postgresql"
@@ -42,7 +51,7 @@ django_allowed_hosts: "*"
 django_superuser_username: "sber"
 django_superuser_email: "sber@sber.ru"
 django_superuser_password: "sber"
-django_language_code: "en-us"
+django_language_code: "ru"
 django_tz: "UTC"
 
 

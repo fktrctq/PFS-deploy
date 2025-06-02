@@ -1,0 +1,106 @@
+# ==================== Получения сертификата Let's Encrypt ===================== #
+
+- name: Установка сертификата
+  block:
+
+    - name: Установка необходимых пакетов 
+      block:
+        - name: Установка certbot
+          apt:
+            name: 
+              - certbot
+              - python3-certbot-nginx 
+            state: present
+            update_cache: yes
+          
+        - name: Установка cron
+          apt:
+            name: cron
+            state: present
+      when: ansible_facts['os_family'] == "Debian"
+ 
+    - name: Создать директорию /etc/letsencrypt, если не существует
+      file:
+        path: "{{ letsencrypt_path }}/.well-known/acme-challenge/"
+        state: directory
+        mode: '0755'
+       
+    - name: Создать временный файл для проверки работы Nginx
+      copy:
+        dest: "{{ letsencrypt_path }}/.well-known/acme-challenge/test"
+        content: "webroot OK"
+
+    - name: Проверить доступность временного файла через Nginx
+      uri:
+        url: "http://{{ server_name }}/.well-known/acme-challenge/test"
+        method: GET
+        return_content: true
+        status_code: 200
+        validate_certs: false
+        follow_redirects: no
+      register: acme_test
+      retries: 5
+      delay: 2
+      until: acme_test.status == 200 and "'webroot OK' in acme_test.content"
+
+    - name: Удалить временные файлы
+      file:
+        path: "{{ letsencrypt_path }}/.well-known/acme-challenge/test"
+        state: absent
+
+    - name: Удалить существующие сертификаты/конфигурациии для домена 
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ letsencrypt_path }}/live/{{ server_name }}"
+        - "{{ letsencrypt_path }}/archive/{{ server_name }}"
+        - "{{ letsencrypt_path }}/renewal/{{ server_name }}.conf"
+
+    - name: Получить сертификат через certbot (webroot)
+      command: >
+        certbot certonly --webroot
+        --webroot-path={{ letsencrypt_path }}
+        --non-interactive
+        --agree-tos
+        {{ '--test-cert' if test_ssl_enabled else '' }}
+        --email {{ email_admin }}
+        -d {{ server_name }}
+      register: certbot_renewed
+      failed_when: "'The following errors' in certbot_renewed.stdout"
+
+    - name: Остановить контейнер nginx
+      docker_container:
+        name: "{{ web_container_name }}"
+        state: stopped
+      when: certbot_renewed is defined and certbot_renewed.changed
+
+    - name: Запустить контейнер nginx
+      docker_container:
+        name: "{{ web_container_name }}"
+        state: started
+      when: certbot_renewed is defined and certbot_renewed.changed
+
+    - name: Добавить cron-задачу для обновления сертификатов и перезапуска контейнера
+      cron:
+        name: "Renew Let's Encrypt certificates"
+        user: root
+        job: >
+          /usr/bin/certbot renew --quiet --post-hook "docker restart {{ web_container_name }}" >/var/log/le-renew.log 2>&1
+        minute: "0"
+        hour: "3"
+        day: "*/7"
+        weekday: "*"
+      register: cron_job
+
+
+  rescue:
+
+    # ─────────────── БЛОК 5: Обработка ошибок ───────────────
+
+    - name: Ошибка установки сертификата
+      debug:
+        msg: "Ошибка установки сертификата"
+
+  tags: 
+    - ssl_letsencrypt

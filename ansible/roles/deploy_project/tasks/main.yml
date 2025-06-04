@@ -31,17 +31,17 @@
         repo: "{{ project_repo_url }}"
         dest: "{{ project_path }}"
         version: "{{ project_repo_branch | default('main') }}"
-      when: project_repo_url is defined
+      when: project_repo_url | length > 0
       register: git_clone_result
       ignore_errors: true
+
 
     # Если клонировать проект из репозитория не получилось выведет соощение и скопирует проект локально
     - name: Уведомление при неудачном клонировании из репозитория
       debug:
         msg: "Клонирование проекта из репозитория {{ project_repo_url }} завершилось с ошибкой."
-      when:
-        - project_repo_url is defined
-        - (git_clone_result | default({})) is failed
+      when: project_repo_url | length == 0
+            or (git_clone_result is defined and git_clone_result.failed)
       ignore_errors: true
 
     # Копируем файлы проекта с управляющего на целевой сервер если не удалось скачать из репозитория
@@ -49,9 +49,8 @@
       copy:
         src: ../docker/
         dest: "{{ project_path }}"
-      when: 
-        - project_repo_url is not defined
-          or (git_clone_result | default({})) is failed
+      when: project_repo_url | length == 0
+            or (git_clone_result is defined and git_clone_result.failed)
       
   # =============== БЛОК 2: Генерация файлов на основе шаблонов и переменных =============== #
 
@@ -76,7 +75,14 @@
         chdir: "{{ project_path }}"
       register: down_result
       ignore_errors: true
-    
+
+    # Удаление volumes cо статическими файлами перед деплоем
+    - name: Удалить volume со статикой
+      shell: docker volume rm {{ static_volume }} 2>&1 || true
+      register: rm_result
+      failed_when: false
+      changed_when: rm_result.stdout is search("Removed volume")
+
     # Если остановка контейнеров завершилась ошибкой — выводим лог
     - name: Чтение содержимого лога остановки и удаление старых контейнеров при возникновении ошибки
       slurp:
@@ -97,7 +103,7 @@
   
   # =============== БЛОК 4: Запускаем контейнеры в фоне, результат записываем в лог =============== #
 
-    # Запускаем контейнеры в фоне
+    # Запускаем сборку и запуск контейнеров 
     - name: Запуск docker compose
       shell: docker compose up -d --build
       register: deploy_check

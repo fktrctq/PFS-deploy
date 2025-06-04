@@ -12,18 +12,26 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-import logging
 
-logger = logging.getLogger(__name__)
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
 
 # Логируем подключение к БД, если что  не так то напишет!
 def get_env(name, default=None):
     value = os.getenv(name, default)
-    if value is None:
-        logger.warning(f"Environment variable '{name}' is not set; using default: {default}")
+    if DEBUG:
+        if value is None:
+            print(f"Environment variable {name} is not set; using default: {default}")
+        else:
+            print(f"Environment variable {name} is set: {value}") 
     return value
     
-    
+
+
+
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -32,12 +40,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+SECRET_KEY = get_env("DJANGO_SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(os.environ.get("DJANGO_DEBUG", default=0))
+ALLOWED_HOSTS = get_env("DJANGO_ALLOWED_HOSTS","*").split(",")
 
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS","*").split(",")
+CSRF_TRUSTED_ORIGINS = get_env("DJANGO_CSRF_TRUSTED_ORIGINS","").split(",")
 
 #For https
 #SECURE_HSTS_SECONDS = 30  # Unit is seconds; *USE A SMALL VALUE FOR TESTING!*
@@ -124,9 +131,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = os.environ.get("DJANGO_LANGUAGE_CODE")
+LANGUAGE_CODE = get_env("DJANGO_LANGUAGE_CODE")
 
-TIME_ZONE = os.environ.get("DJANGO_TZ")
+TIME_ZONE = get_env("DJANGO_TZ")
 
 USE_I18N = True
 

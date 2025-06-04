@@ -1,6 +1,6 @@
 # Project 
 project_path: /opt/devforsber
-project_repo_url: ""
+project_repo_url: "https://github.com/fktrctq/PFS-web.git"
 project_repo_branch: dev
 required_docker_version: "24.0.7"
 required_compose_version: "2.24.6"
@@ -8,6 +8,7 @@ required_compose_version: "2.24.6"
 # Docker Compose
 db_image: postgres:alpine3.21
 vol_name: dev_pgdata_forsber
+static_volume: static_data_volume
 log_max_size: "10m"
 log_max_file: "2"
 
@@ -45,7 +46,7 @@ db_locale: "en-US"
 
 # Django settings
 django_secret_key: "super-secret-key"
-django_debug: "true"
+django_debug: "false"
 django_loglevel: "info"
 django_allowed_hosts: "localhost,127.0.0.1,{{ server_name }},{{ web_service_name }}"
 django_csrf_trusted_origins: "https://{{ server_name }}"

@@ -38,6 +38,7 @@ services:
       DJANGO_DEBUG: "{{ django_debug }}"
       DJANGO_LOGLEVEL: "{{ django_loglevel }}"
       DJANGO_ALLOWED_HOSTS: "{{ django_allowed_hosts }}"
+      DJANGO_CSRF_TRUSTED_ORIGINS: "{{ django_csrf_trusted_origins }}"
       DJANGO_LANGUAGE_CODE: "{{ django_language_code }}"
       DJANGO_TZ: "{{ django_tz }}"
       DATABASE_ENGINE: "{{ db_engine }}"
@@ -48,6 +49,8 @@ services:
       DATABASE_PORT: "{{ db_port }}"
     expose:
       - 8000
+    volumes:
+      - "{{ static_volume }}:/backend/static"
     depends_on:
       "{{ pg_service_name }}":
         condition: service_healthy
@@ -78,7 +81,8 @@ services:
       - "{{ nginx_public_port }}:{{ nginx_public_port }}"
       - "{{ nginx_public_port_ssl }}:{{ nginx_public_port_ssl }}"
     volumes:
-      - {{ letsencrypt_path }}:/etc/letsencrypt:ro
+      - "{{ letsencrypt_path }}:/etc/letsencrypt:ro"
+      - "{{ static_volume }}:/static:ro"
     command: ["nginx", "-g", "daemon off;"]
     depends_on:
       "{{ app_service_name }}":
@@ -91,4 +95,5 @@ services:
         max-file: "{{ log_max_file | default('3') }}"
     
 volumes:
-  "{{ vol_name }}":
+  "{{ vol_name }}": 
+  "{{ static_volume }}":

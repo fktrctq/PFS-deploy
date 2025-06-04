@@ -25,6 +25,13 @@ http {
         location / {
         return 301 https://$host$request_uri;
         }
+
+        location /static/ {
+            alias /static/;
+            expires 30d;
+            add_header Cache-Control "public";
+            autoindex off;
+        }
     }
 
     server {
@@ -35,6 +42,13 @@ http {
         ssl_certificate_key /etc/letsencrypt/live/{{ server_name }}/privkey.pem;
         ssl_protocols       TLSv1.2 TLSv1.3;
         ssl_ciphers         HIGH:!aNULL:!MD5;
+
+        location /static/ {
+            alias /static/;
+            expires 30d;
+            add_header Cache-Control "public";
+            autoindex off;
+        }
 
         location / {
             proxy_pass http://{{ proxy_upstream }};

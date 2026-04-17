@@ -2,6 +2,10 @@
 
 Этот проект — готовый к развёртыванию стек Django, PostgreSQL и Nginx с поддержкой SSL и автоматизацией через Ansible.
 
+![Docker](https://img.shields.io/badge/Docker-20.10+-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker_Compose-1.29+-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Ansible](https://img.shields.io/badge/Ansible-2.9+-EE0000?style=for-the-badge&logo=ansible&logoColor=white)
+
 ## Структура проекта
 
 ```plaintext

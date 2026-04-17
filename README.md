@@ -39,9 +39,8 @@ docker/
   │   └── backend/                     # Код Django проекта
   └── nginx/
       └── Dockerfile                   # Dockerfile для Nginx образа
-
---
-
+```
+---
 ## Требования
 
 - Docker >= 20.10  
@@ -51,31 +50,31 @@ docker/
 
 ---
 ## Быстрый старт
-1. Клонируйте репозиторий:
+### Клонируйте репозиторий:
+```bash
+git clone https://github.com/fktrctq/PFS-deploy.git
+cd PFS-deploy
+```
 
-git clone <URL_репозитория>
-cd <директория_проекта>
+### Настройте инвентори и переменные окружения
+- ansible/inventory/inventory.yml
+- ansible/group_vars/{prod.yml, dev.yml}
 
-2. Настройте инвентори и переменные окружения в ansible/inventory/inventory.yml и ansible/group_vars/.
-
-3. Запустите playbook Ansible для установки Docker, настройки фаервола, SSL и деплоя проекта:
+### Запустите playbook Ansible для установки Docker, настройки фаервола, SSL и деплоя проекта:
+```bash
 ansible-playbook -i ansible/inventory/inventory.yml ansible/playbook.yml
+```
 
-4. По завершении деплоя сервисы будут доступны по вашим настройкам (домен, порты).
+### Роли Ansible
+- docker_install — установка и проверка версии Docker и Docker Compose
+- firewall — настройка и включение брандмауэра
+- ssl_for_nginx — генерация и обновление SSL сертификатов (Let's Encrypt или self-signed)
+- deploy_project — деплой Docker Compose проекта с Django, PostgreSQL и Nginx
 
-Роли Ansible
-docker_install — установка и проверка версии Docker и Docker Compose
-firewall — настройка и включение брандмауэра
-ssl_for_nginx — генерация и обновление SSL сертификатов (Let's Encrypt или self-signed)
-deploy_project — деплой Docker Compose проекта с Django, PostgreSQL и Nginx
-
-Ключевые особенности
-Автоматический запуск миграций Django и создание суперпользователя
-Настройка Nginx с SSL (Let's Encrypt или self-signed)
-Многоступенчатая сборка Docker образов для уменьшения размера
-Healthchecks для всех сервисов
-Логирование с ротацией
-Гибкая конфигурация через Ansible переменные и шаблоны
-
-Настройка переменных
-Переменные находятся в ansible/group_vars/ для разных окружений (prod, dev).
+### Ключевые особенности
+- Автоматический запуск миграций Django и создание суперпользователя
+- Настройка Nginx с SSL (Let's Encrypt или self-signed)
+- Многоступенчатая сборка Docker образов для уменьшения размера
+- Healthchecks для всех сервисов
+- Логирование с ротацией
+- Гибкая конфигурация через Ansible переменные и шаблоны
